@@ -1,50 +1,50 @@
 import styles from './ContactForm.module.css';
 import { Button } from 'components/Button/Button';
 import React from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { addContact } from 'redux/actions/contactsActions';
-import { nanoid } from '@reduxjs/toolkit';
-
+import {
+  useGetContactsQuery,
+  useAddContactMutation,
+} from 'services/contactsApi';
 
 const ContactForm = () => {
   const { form, form__field, label, input } = styles;
 
-  const contacts = useSelector(state => state.contacts);
-  const dispatch = useDispatch();
+  const { data: contacts = [] } = useGetContactsQuery();
+  const [addContact, { isLoading }] = useAddContactMutation();
 
+  const onSubmit = async e => {
+    e.preventDefault();
 
-  const addNewContact = evt => {
-    evt.preventDefault();
-
-    const form = evt.target;
+    const form = e.target;
     const name = form.name.value;
     const number = form.number.value;
-
-    const newContact = {
-      id: nanoid(),
-      name,
-      number,
-    };
 
     if (contacts.some(contact => contact.name === name)) {
       alert(`${name} is already in contacts`);
       return;
     }
 
-    if (contacts.some(contact => contact.number === number)) {
-      const filteredNumber = contacts.filter(
-        contact => contact.number === number
-      )[0].name;
-      alert(`${number} is already in contact with ${filteredNumber} `);
+    if (contacts.some(contact => contact.phone === number)) {
+      const [filteredNumber] = contacts.filter(
+        contact => contact.phone === number
+      );
+      alert(`${number} is already in contact with ${filteredNumber.name} `);
       return;
     }
 
-    dispatch(addContact(newContact));
+    try {
+      await addContact({
+        name,
+        phone: number,
+      });
+    } catch (error) {
+      alert(`Failed to save the contact`);
+    }
     form.reset();
   };
 
   return (
-    <form className={form} onSubmit={addNewContact}>
+    <form className={form} onSubmit={onSubmit}>
       <div className={form__field}>
         <label htmlFor="contactName" className={label}>
           Name
@@ -73,10 +73,13 @@ const ContactForm = () => {
           required
         />
       </div>
-
-      <Button type="submit" title="Add contact"></Button>
+      <Button
+        type="submit"
+        title={isLoading ? 'Adding...' : 'Add contact'}
+      ></Button>
     </form>
   );
 };
 
 export default ContactForm;
+  
